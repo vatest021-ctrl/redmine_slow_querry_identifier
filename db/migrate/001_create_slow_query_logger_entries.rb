@@ -11,6 +11,7 @@ class CreateSlowQueryLoggerEntries < ActiveRecord::Migration[7.2]
       t.string :login
       t.string :request_id
       t.string :ip
+      t.string :source
       t.string :http_method
       t.text :path
       t.string :sql_name
@@ -28,6 +29,7 @@ class CreateSlowQueryLoggerEntries < ActiveRecord::Migration[7.2]
     add_index :slow_query_logger_entries, :user_id
     add_index :slow_query_logger_entries, :request_id
     add_index :slow_query_logger_entries, :ip
+    add_index :slow_query_logger_entries, :source
     add_index :slow_query_logger_entries, :duration_ms
   end
 end

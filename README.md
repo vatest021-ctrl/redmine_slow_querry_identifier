@@ -81,10 +81,21 @@ or from plugin settings:
 Administration -> Plugins -> Redmine Slow Query Logger -> Configure -> Open slow query journal
 ```
 
-The journal supports filters by event type, login, IP, request id, time range,
-minimum duration, and result limit. Clicking a request id filters all entries
-from the same Redmine request, which helps connect the slow request summary to
-the SQL statements executed inside it.
+The journal supports filters by event type, source, login, IP, request id, time
+range, minimum duration, and result limit. Clicking a request id filters all
+entries from the same Redmine request, which helps connect the slow request
+summary to the SQL statements executed inside it.
+
+Source classification is heuristic:
+
+- `portal` - regular Redmine pages;
+- `api` - `.json`, `.xml`, JSON/XML requests;
+- `export` - `.csv`, `.pdf`, `.xlsx`, `.xls`;
+- `feed` - `.atom`, `.rss`;
+- `webhook` - paths containing `hook`, `hooks`, `webhook`, `webhooks`;
+- `plugin_endpoint` - non-core Redmine controllers;
+- `public` - anonymous HTTP requests;
+- `unknown` - missing request context.
 
 ## Generate DB Load
 

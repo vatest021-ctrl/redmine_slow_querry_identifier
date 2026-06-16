@@ -2,6 +2,7 @@
 
 require_relative 'redmine_slow_query_logger/config'
 require_relative 'redmine_slow_query_logger/context'
+require_relative 'redmine_slow_query_logger/source_classifier'
 require_relative 'redmine_slow_query_logger/sanitizer'
 require_relative 'redmine_slow_query_logger/store'
 require_relative 'redmine_slow_query_logger/sql_subscriber'

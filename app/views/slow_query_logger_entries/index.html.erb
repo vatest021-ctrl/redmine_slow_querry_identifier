@@ -12,6 +12,19 @@
       <label>Type</label>
       <%= select_tag :event_type, options_for_select([['All', ''], ['SQL', 'sql'], ['Request', 'request']], @event_type) %>
 
+      <label>Source</label>
+      <%= select_tag :source, options_for_select([
+        ['All', ''],
+        ['Portal', 'portal'],
+        ['API', 'api'],
+        ['Export', 'export'],
+        ['Feed', 'feed'],
+        ['Webhook', 'webhook'],
+        ['Plugin endpoint', 'plugin_endpoint'],
+        ['Public', 'public'],
+        ['Unknown', 'unknown']
+      ], @source) %>
+
       <label>Login</label>
       <%= text_field_tag :login, @login, size: 20 %>
 
@@ -48,6 +61,7 @@
     <tr>
       <th>Time</th>
       <th>Type</th>
+      <th>Source</th>
       <th>Duration</th>
       <th>User</th>
       <th>IP</th>
@@ -60,6 +74,7 @@
       <tr class="<%= cycle('odd', 'even') %>">
         <td><%= format_time(entry.created_at) %></td>
         <td><%= entry.event_type %></td>
+        <td><%= h(entry.respond_to?(:source) ? entry.source : nil) %></td>
         <td>
           <strong><%= entry.duration_ms.round(1) %> ms</strong>
           <% if entry.threshold_ms.present? %>

@@ -46,6 +46,14 @@ module RedmineSlowQueryLogger
       context[:ip] ||= request&.remote_ip || headers_value(headers, 'action_dispatch.remote_ip')
       context[:method] ||= payload[:method] || request&.request_method
       context[:path] ||= Sanitizer.mask_url(payload[:path] || request&.fullpath)
+      context[:format] ||= payload[:format] || request&.format&.symbol
+      context[:controller] ||= payload[:controller]
+      context[:source] = SourceClassifier.classify(
+        path: context[:path],
+        format: context[:format],
+        controller: context[:controller],
+        login: user_snapshot[:login]
+      )
     end
 
     def user_snapshot

@@ -7,6 +7,7 @@ class SlowQueryLoggerEntriesController < ApplicationController
 
   def index
     @event_type = params[:event_type].to_s
+    @source = params[:source].to_s
     @login = params[:login].to_s.strip
     @ip = params[:ip].to_s.strip
     @request_id = params[:request_id].to_s.strip
@@ -16,6 +17,7 @@ class SlowQueryLoggerEntriesController < ApplicationController
 
     @entries = SlowQueryLoggerEntry.recent
     @entries = @entries.where(event_type: @event_type) if %w[sql request].include?(@event_type)
+    @entries = @entries.where(source: @source) if sources.include?(@source)
     @entries = @entries.where('login LIKE ?', "%#{@login}%") if @login.present?
     @entries = @entries.where('ip LIKE ?', "%#{@ip}%") if @ip.present?
     @entries = @entries.where(request_id: @request_id) if @request_id.present?
@@ -33,6 +35,10 @@ class SlowQueryLoggerEntriesController < ApplicationController
   end
 
   private
+
+  def sources
+    %w[portal api export feed webhook plugin_endpoint public unknown]
+  end
 
   def limit
     value = params.fetch(:limit, 100).to_i

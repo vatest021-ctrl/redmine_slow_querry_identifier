@@ -38,6 +38,7 @@ module RedmineSlowQueryLogger
         "login=#{context[:login].inspect} " \
         "request_id=#{context[:request_id].inspect} " \
         "ip=#{context[:ip].inspect} " \
+        "source=#{context[:source].inspect} " \
         "method=#{context[:method].inspect} " \
         "path=#{context[:path].inspect} " \
         "name=#{payload[:name].inspect} " \
@@ -52,6 +53,7 @@ module RedmineSlowQueryLogger
         login: context[:login],
         request_id: context[:request_id],
         ip: context[:ip],
+        source: context[:source],
         http_method: context[:method],
         path: context[:path],
         sql_name: payload[:name],
