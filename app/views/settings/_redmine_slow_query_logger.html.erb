@@ -1,0 +1,55 @@
+<p>
+  <label>Write readable journal to database</label>
+  <%= hidden_field_tag 'settings[db_log_enabled]', '0' %>
+  <%= check_box_tag 'settings[db_log_enabled]', '1', @settings['db_log_enabled'] == '1' %>
+</p>
+
+<p>
+  <label>Slow SQL threshold, ms</label>
+  <%= number_field_tag 'settings[slow_sql_ms]', @settings['slow_sql_ms'].presence || '500', min: 0, step: 100 %>
+  <em class="info">Can be overridden by <code>REDMINE_SLOW_SQL_MS</code>.</em>
+</p>
+
+<p>
+  <label>Slow request threshold, ms</label>
+  <%= number_field_tag 'settings[slow_request_ms]', @settings['slow_request_ms'].presence || '1000', min: 0, step: 100 %>
+  <em class="info">Can be overridden by <code>REDMINE_SLOW_REQUEST_MS</code>.</em>
+</p>
+
+<p>
+  <label>Maximum stored SQL length</label>
+  <%= number_field_tag 'settings[max_sql_length]', @settings['max_sql_length'].presence || '4000', min: 200, step: 100 %>
+  <em class="info">Can be overridden by <code>REDMINE_SLOW_SQL_MAX_LENGTH</code>.</em>
+</p>
+
+<p>
+  <label>Maximum stored entries</label>
+  <%= number_field_tag 'settings[max_entries]', @settings['max_entries'].presence || '1000', min: 0, step: 100 %>
+  <em class="info">Oldest entries are removed automatically. Use 0 to disable pruning.</em>
+</p>
+
+<p>
+  <label>Mask sensitive URL parameters</label>
+  <%= hidden_field_tag 'settings[mask_url_params]', '0' %>
+  <%= check_box_tag 'settings[mask_url_params]', '1', @settings['mask_url_params'] != '0' %>
+  <em class="info">Masks parameters with names like password, token, key, secret, session.</em>
+</p>
+
+<p>
+  <label>Mask SQL literals</label>
+  <%= hidden_field_tag 'settings[mask_sql_literals]', '0' %>
+  <%= check_box_tag 'settings[mask_sql_literals]', '1', @settings['mask_sql_literals'] == '1' %>
+  <em class="info">Replaces quoted strings and numbers with placeholders. Useful when SQL may contain sensitive values.</em>
+</p>
+
+<p>
+  <%= link_to 'Open slow query journal', { controller: 'slow_query_logger_entries', action: 'index' }, class: 'icon icon-warning' %>
+</p>
+
+<p>
+  Extra debug switches:
+  <code>REDMINE_SLOW_SQL_MS</code>,
+  <code>REDMINE_SLOW_REQUEST_MS</code>,
+  <code>REDMINE_SLOW_SQL_LOG_ALL</code>,
+  <code>REDMINE_SLOW_REQUEST_LOG_ALL</code>.
+</p>
