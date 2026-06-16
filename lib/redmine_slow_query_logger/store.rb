@@ -7,10 +7,10 @@ module RedmineSlowQueryLogger
     module_function
 
     def record!(attributes)
+      Thread.current[THREAD_KEY] = true
       return unless Config.db_log_enabled?
       return unless available?
 
-      Thread.current[THREAD_KEY] = true
       SlowQueryLoggerEntry.create!(attributes.compact)
       prune!
     rescue StandardError => e

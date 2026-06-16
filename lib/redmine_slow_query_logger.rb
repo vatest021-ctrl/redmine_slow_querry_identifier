@@ -8,6 +8,7 @@ require_relative 'redmine_slow_query_logger/sql_subscriber'
 require_relative 'redmine_slow_query_logger/controller_subscriber'
 
 Rails.application.config.after_initialize do
+  RedmineSlowQueryLogger::Config.refresh!
   RedmineSlowQueryLogger::SqlSubscriber.install!
   RedmineSlowQueryLogger::ControllerSubscriber.install!
 end
