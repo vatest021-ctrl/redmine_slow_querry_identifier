@@ -1,26 +1,49 @@
 # Redmine Slow Query Logger
 
-Minimal Redmine 6 plugin for checking which Redmine user triggers slow requests
-and slow SQL queries. It writes normal Rails log lines and keeps a readable
-admin journal in the Redmine database.
+Минимальный плагин для Redmine 6, который помогает понять, какой пользователь
+Redmine инициирует медленные web/API-запросы и SQL-запросы. Плагин пишет обычные
+строки в Rails-лог и ведет читаемый журнал в базе данных Redmine.
 
-## Install
+## Установка
 
-Copy this directory to Redmine:
+Скопируйте или склонируйте плагин в каталог `plugins` Redmine:
 
 ```bash
-cp -R redmine_slow_query_logger /path/to/redmine/plugins/
+cd /path/to/redmine/plugins
+git clone https://github.com/vatest021-ctrl/redmine_slow_querry_identifier.git redmine_slow_query_logger
+
 cd /path/to/redmine
 bundle exec rake redmine:plugins:migrate RAILS_ENV=production
 touch tmp/restart.txt
 ```
 
-The plugin creates the `slow_query_logger_entries` table for the readable admin
-journal.
+Если Redmine запущен через systemd, Docker или другой процесс-менеджер,
+используйте штатный перезапуск сервиса вместо `touch tmp/restart.txt`.
 
-## Configuration
+Плагин создает таблицу `slow_query_logger_entries` для читаемого журнала в
+админке Redmine.
 
-Configure through environment variables before starting Redmine:
+## Настройка
+
+Откройте в Redmine:
+
+```text
+Администрирование -> Плагины -> Redmine Slow Query Logger -> Configure
+```
+
+В настройках можно:
+
+- включить или отключить журнал в базе данных;
+- задать порог медленного SQL;
+- задать порог медленного web/API-запроса;
+- задать максимальную длину сохраняемого SQL;
+- задать максимальное количество записей журнала;
+- включить маскирование чувствительных URL-параметров;
+- включить маскирование SQL literals;
+- открыть страницу журнала.
+
+Переменные окружения переопределяют настройки из интерфейса. Это удобно для
+временной проверки в production без сохранения постоянных настроек:
 
 ```bash
 REDMINE_SLOW_SQL_MS=500
@@ -28,116 +51,140 @@ REDMINE_SLOW_REQUEST_MS=1000
 REDMINE_SLOW_SQL_MAX_LENGTH=4000
 ```
 
-In Redmine, open:
-
-```text
-Administration -> Plugins -> Redmine Slow Query Logger -> Configure
-```
-
-There you can enable or disable the readable database journal, set how many
-entries to keep, configure default thresholds, enable URL parameter masking,
-enable SQL literal masking, and open the journal page.
-
-Environment variables override UI settings. This is useful when you need a
-temporary production check without saving persistent settings.
-
-For a quick smoke test, force all matching events into the log:
+Для короткой smoke-проверки можно временно фиксировать все события:
 
 ```bash
 REDMINE_SLOW_SQL_MS=0
 REDMINE_SLOW_REQUEST_MS=0
 ```
 
-or:
+или:
 
 ```bash
 REDMINE_SLOW_SQL_LOG_ALL=1
 REDMINE_SLOW_REQUEST_LOG_ALL=1
 ```
 
-## What It Logs
+Не держите эти значения включенными в production надолго.
 
-Slow SQL log example:
+## Что фиксирует плагин
 
-```text
-[redmine_slow_query_logger] slow_sql duration_ms=812.4 threshold_ms=500 user_id=12 login="ivan" request_id="..." ip="10.0.0.5" method="GET" path="/issues?... " name="Issue Count" sql="SELECT COUNT(*) ..."
-```
-
-Slow request log example:
+Пример строки медленного SQL в `production.log`:
 
 ```text
-[redmine_slow_query_logger] slow_request duration_ms=1450.1 threshold_ms=1000 status=200 user_id=12 login="ivan" request_id="..." ip="10.0.0.5" method="GET" path="/issues?..." sql_count=42 slow_sql_count=3 sql_duration_ms=1190.2
+[redmine_slow_query_logger] slow_sql duration_ms=812.4 threshold_ms=500 user_id=12 login="ivan" request_id="..." ip="10.0.0.5" source="api" method="GET" path="/issues.json?..." name="Issue Count" sql="SELECT COUNT(*) ..."
 ```
 
-Readable UI journal:
+Пример строки медленного web/API-запроса:
 
 ```text
-Administration -> Slow query log
+[redmine_slow_query_logger] slow_request duration_ms=1450.1 threshold_ms=1000 status=200 user_id=12 login="ivan" request_id="..." ip="10.0.0.5" source="portal" method="GET" path="/issues?..." sql_count=42 slow_sql_count=3 sql_duration_ms=1190.2
 ```
 
-or from plugin settings:
+Читаемый журнал доступен здесь:
 
 ```text
-Administration -> Plugins -> Redmine Slow Query Logger -> Configure -> Open slow query journal
+Администрирование -> Slow query log
 ```
 
-The journal supports filters by event type, source, login, IP, request id, time
-range, minimum duration, and result limit. Clicking a request id filters all
-entries from the same Redmine request, which helps connect the slow request
-summary to the SQL statements executed inside it.
+или из настроек плагина:
 
-Source classification is heuristic:
+```text
+Администрирование -> Плагины -> Redmine Slow Query Logger -> Configure -> Open slow query journal
+```
 
-- `portal` - regular Redmine pages;
-- `api` - `.json`, `.xml`, JSON/XML requests;
+Журнал поддерживает фильтры:
+
+- тип события: `request` / `sql`;
+- источник: `portal`, `api`, `export`, `feed`, `webhook`, `plugin_endpoint`, `public`, `unknown`;
+- логин;
+- IP;
+- `request_id`;
+- период времени;
+- минимальная длительность;
+- лимит вывода.
+
+Клик по `request_id` показывает события одного Redmine-запроса: сводку
+`request` и связанные SQL-события.
+
+## Классификация источников
+
+Классификация эвристическая:
+
+- `portal` - обычные страницы Redmine;
+- `api` - `.json`, `.xml`, JSON/XML-запросы;
 - `export` - `.csv`, `.pdf`, `.xlsx`, `.xls`;
 - `feed` - `.atom`, `.rss`;
-- `webhook` - paths containing `hook`, `hooks`, `webhook`, `webhooks`;
-- `plugin_endpoint` - non-core Redmine controllers;
-- `public` - anonymous HTTP requests;
-- `unknown` - missing request context.
+- `webhook` - URL содержит `hook`, `hooks`, `webhook`, `webhooks`;
+- `plugin_endpoint` - контроллер не входит в базовый список контроллеров Redmine;
+- `public` - анонимный HTTP-запрос;
+- `unknown` - нет request-контекста.
 
-## Generate DB Load
+## Генерация тестовой нагрузки
 
-From Redmine root:
+Из корня Redmine:
 
 ```bash
 REDMINE_SLOW_SQL_MS=0 bundle exec rake redmine_slow_query_logger:db_load RAILS_ENV=production USER_ID=1 ITERATIONS=5 PROJECT_LIMIT=1000
 ```
 
-This runs Redmine/ActiveRecord queries similar to the expensive issue-count
-query from the issue list. `USER_ID` is optional, but useful for verifying that
-the plugin writes a Redmine user into log lines.
+Задача выполняет Redmine/ActiveRecord-запросы, похожие на тяжелый `COUNT(*)`
+со страницы списка задач. `USER_ID` необязателен, но полезен для проверки, что
+плагин пишет пользователя Redmine в журнал.
 
-Check:
+Проверить Rails-лог:
 
 ```bash
 tail -f log/production.log
 ```
 
-Also check the Redmine UI journal. With `REDMINE_SLOW_SQL_MS=0`, the rake task
-should create SQL entries immediately.
+Также проверьте журнал в интерфейсе Redmine. При `REDMINE_SLOW_SQL_MS=0`
+rake-задача должна сразу создать SQL-записи.
 
-## Data Accuracy Notes
+## Достоверность данных
 
-The plugin records `User.current` at the Redmine application layer. This is
-accurate for normal web requests after Redmine authentication has set the
-current user. Background jobs, anonymous requests, shared accounts, or custom
-API/auth flows can have missing or less precise user attribution. Use
-`request_id`, IP, Redmine `production.log`, reverse proxy logs, and DB slow logs
-for cross-checking important incidents.
+Плагин фиксирует `User.current` на уровне приложения Redmine.
 
-## Sensitive Data
+Это достоверно для обычных web/API-запросов после того, как Redmine установил
+текущего пользователя.
 
-By default, URL parameters with names like `password`, `token`, `key`, `secret`,
-`session`, or `cookie` are masked. SQL literals are not masked by default because
-keeping exact SQL is often useful during diagnosis; enable `Mask SQL literals`
-in plugin settings if SQL may contain sensitive values.
+Ограничения:
 
-## PostgreSQL and pgBadger
+- background/rake-задачи могут не иметь HTTP IP, URL и `request_id`;
+- анонимные запросы будут отображаться как `anonymous`;
+- общие учетные записи будут отображаться как один общий пользователь;
+- кастомные API/auth-плагины могут не установить `User.current`;
+- PostgreSQL и pgBadger сами по себе обычно не знают пользователя Redmine.
 
-For a full production workflow, combine this plugin with PostgreSQL
-`log_min_duration_statement`, `pg_stat_activity`, and pgBadger reports. See:
+Для важных инцидентов сверяйте:
+
+- журнал плагина;
+- `log/production.log`;
+- nginx/apache access log;
+- PostgreSQL slow log;
+- pgBadger-отчет.
+
+## Чувствительные данные
+
+По умолчанию маскируются URL-параметры с именами вроде:
+
+```text
+password, token, key, secret, session, cookie
+```
+
+SQL literals по умолчанию не маскируются, потому что точный SQL часто нужен для
+диагностики. Если SQL может содержать чувствительные значения, включите
+`Mask SQL literals` в настройках плагина.
+
+## PostgreSQL и pgBadger
+
+Для полноценного production-процесса используйте плагин вместе с:
+
+- PostgreSQL `log_min_duration_statement`;
+- `pg_stat_activity`;
+- pgBadger-отчетами.
+
+Подробная методика описана здесь:
 
 ```text
 docs/PG_BADGER_INTEGRATION.md

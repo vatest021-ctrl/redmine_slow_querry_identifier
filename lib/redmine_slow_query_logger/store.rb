@@ -7,6 +7,8 @@ module RedmineSlowQueryLogger
     module_function
 
     def record!(attributes)
+      # Флаг включается до любых проверок БД, включая table_exists?.
+      # Иначе проверка таблицы может сама породить sql.active_record событие.
       Thread.current[THREAD_KEY] = true
       return unless Config.db_log_enabled?
       return unless available?
@@ -34,6 +36,7 @@ module RedmineSlowQueryLogger
       max_entries = Config.max_entries
       return if max_entries <= 0
 
+      # Удаляем только старые записи сверх лимита, чтобы журнал не рос бесконечно.
       extra_count = SlowQueryLoggerEntry.count - max_entries
       return if extra_count <= 0
 

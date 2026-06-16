@@ -1,29 +1,29 @@
-# Redmine Slow Query Logger + PostgreSQL + pgBadger
+# Связка Redmine Slow Query Logger + PostgreSQL + pgBadger
 
-This document describes a practical production/staging setup where:
+Документ описывает практическую схему для стенда или production, где:
 
-- Redmine Slow Query Logger identifies the Redmine user, browser/API IP, URL, request id, and source.
-- PostgreSQL slow query log records database-level slow SQL independently from Redmine.
-- pgBadger builds readable reports from PostgreSQL logs.
+- Redmine Slow Query Logger определяет пользователя Redmine, IP браузера/API, URL, `request_id` и источник запроса.
+- PostgreSQL slow query log независимо от Redmine фиксирует медленные SQL на уровне базы данных.
+- pgBadger строит читаемые HTML-отчеты по PostgreSQL-логам.
 
-The goal is to answer three questions:
+Цель связки - отвечать на три вопроса:
 
-- Who initiated the load in Redmine?
-- Which SQL was slow in PostgreSQL?
-- How can the events be correlated during an incident?
+- кто инициировал нагрузку в Redmine;
+- какой SQL был медленным в PostgreSQL;
+- как сопоставить события Redmine и PostgreSQL во время инцидента.
 
-## 1. Recommended Architecture
+## 1. Рекомендуемая архитектура
 
 ```text
-User / API / integration
+Пользователь / API / интеграция
         |
         v
-Redmine HTTP request
+HTTP-запрос в Redmine
         |
         | Redmine Slow Query Logger
         | - request_id
         | - user_id / login
-        | - browser/API IP
+        | - IP браузера/API
         | - path
         | - source: portal/api/export/feed/webhook/plugin_endpoint/public/unknown
         v
@@ -34,24 +34,24 @@ PostgreSQL
         |
         | PostgreSQL slow log
         | - pid
-        | - DB user
-        | - DB client IP
+        | - пользователь БД
+        | - IP клиента БД
         | - application_name
-        | - slow SQL
+        | - медленный SQL
         v
-pgBadger HTML report
+HTML-отчет pgBadger
 ```
 
-Redmine and PostgreSQL see different identities:
+Redmine и PostgreSQL видят разные идентификаторы:
 
-- Redmine sees the real Redmine user and the HTTP client IP.
-- PostgreSQL usually sees only the Redmine DB user and the Redmine server IP.
+- Redmine видит реального пользователя Redmine и HTTP IP клиента.
+- PostgreSQL обычно видит только DB-пользователя Redmine и IP сервера Redmine.
 
-The best correlation key is `request_id`.
+Лучший ключ для сопоставления событий - `request_id`.
 
-## 2. Plugin Settings
+## 2. Настройки плагина
 
-For production monitoring of only very slow events:
+Для production-мониторинга только очень медленных событий:
 
 ```text
 Write readable journal to database = enabled
@@ -60,12 +60,12 @@ Slow request threshold, ms = 60000
 Maximum stored SQL length = 4000
 Maximum stored entries = 1000
 Mask sensitive URL parameters = enabled
-Mask SQL literals = disabled or enabled according to your security policy
+Mask SQL literals = disabled или enabled по политике безопасности
 ```
 
-`60000` ms means 60 seconds.
+`60000` мс = 60 секунд.
 
-Avoid long-term production use of:
+Не используйте долго в production:
 
 ```text
 REDMINE_SLOW_SQL_LOG_ALL=1
@@ -74,13 +74,13 @@ Slow SQL threshold = 0
 Slow request threshold = 0
 ```
 
-These settings are useful only for short smoke tests.
+Эти настройки нужны только для короткой smoke-проверки.
 
-## 3. PostgreSQL Slow Log
+## 3. PostgreSQL slow log
 
-Enable PostgreSQL logging for SQL longer than 60 seconds.
+Включите логирование SQL дольше 60 секунд.
 
-Run as a PostgreSQL superuser:
+Выполнить от PostgreSQL superuser:
 
 ```sql
 ALTER SYSTEM SET log_min_duration_statement = '60000';
@@ -88,7 +88,7 @@ ALTER SYSTEM SET log_line_prefix = '%m [%p] user=%u db=%d app=%a client=%h ';
 SELECT pg_reload_conf();
 ```
 
-Check current log settings:
+Проверить текущие настройки логирования:
 
 ```sql
 SHOW log_min_duration_statement;
@@ -98,29 +98,29 @@ SHOW log_directory;
 SHOW log_filename;
 ```
 
-Typical log locations:
+Типичные расположения логов:
 
 ```text
 /var/log/postgresql/postgresql-*.log
 ```
 
-or inside the PostgreSQL data directory, depending on your installation.
+или каталог внутри PostgreSQL data directory. Это зависит от установки.
 
-## 4. pgBadger Installation
+## 4. Установка pgBadger
 
-Debian/Ubuntu example:
+Пример для Debian/Ubuntu:
 
 ```bash
 apt-get update
 apt-get install pgbadger
 ```
 
-If packages are unavailable, install from the official pgBadger distribution
-for your OS.
+Если пакета нет в репозитории ОС, установите pgBadger из официальной поставки
+для вашей системы.
 
-## 5. Generate a pgBadger Report
+## 5. Генерация отчета pgBadger
 
-Example:
+Пример:
 
 ```bash
 pgbadger \
@@ -128,7 +128,7 @@ pgbadger \
   -o /var/www/html/pgbadger-redmine.html
 ```
 
-For a specific period:
+Отчет за конкретный период:
 
 ```bash
 pgbadger \
@@ -138,22 +138,22 @@ pgbadger \
   -o /var/www/html/pgbadger-redmine-2026-06-16.html
 ```
 
-Make sure access to the generated report is restricted. PostgreSQL logs can
-contain sensitive SQL and data.
+Ограничьте доступ к HTML-отчету. PostgreSQL-логи могут содержать чувствительный
+SQL и данные.
 
-## 6. Correlation Workflow
+## 6. Сценарии сопоставления событий
 
-### 6.1. From Redmine Journal to PostgreSQL / pgBadger
+### 6.1. От журнала Redmine к PostgreSQL / pgBadger
 
-1. Open:
+1. Открыть:
 
    ```text
-   Administration -> Slow query log
+   Администрирование -> Slow query log
    ```
 
-2. Find a slow event.
+2. Найти медленное событие.
 
-3. Note:
+3. Записать:
 
    ```text
    Time
@@ -165,57 +165,57 @@ contain sensitive SQL and data.
    SQL text
    ```
 
-4. Open pgBadger report for the same time range.
+4. Открыть pgBadger-отчет за тот же период.
 
-5. Search by:
+5. Искать по:
 
    ```text
-   SQL fragment
-   table name
-   timestamp
-   pid/time window
+   фрагменту SQL
+   имени таблицы
+   времени события
+   pid/временному окну
    ```
 
-6. Use Redmine journal for the human/application attribution:
+6. Журнал Redmine использовать для прикладной атрибуции:
 
    ```text
    login + source + path + HTTP IP
    ```
 
-7. Use pgBadger for database evidence:
+7. pgBadger использовать как доказательство на уровне БД:
 
    ```text
    slow SQL + total time + frequency + DB client + app name
    ```
 
-### 6.2. From pgBadger to Redmine Journal
+### 6.2. От pgBadger к журналу Redmine
 
-1. Find the slow SQL in pgBadger.
-2. Note timestamp and SQL fragment.
-3. Open Redmine slow query journal.
-4. Filter by time range and source if known.
-5. Search visually for the SQL fragment or matching path.
-6. Use `request_id` to view the full Redmine request group.
+1. Найти медленный SQL в pgBadger.
+2. Записать время и фрагмент SQL.
+3. Открыть журнал Redmine Slow Query Logger.
+4. Отфильтровать события по периоду и источнику, если источник понятен.
+5. Визуально найти совпадающий SQL или URL.
+6. Через `request_id` открыть полную группу событий одного Redmine-запроса.
 
-## 7. Optional Stronger Integration: PostgreSQL `application_name`
+## 7. Возможная усиленная интеграция через PostgreSQL `application_name`
 
-The cleanest future integration is to set PostgreSQL `application_name` per
-Redmine request.
+Наиболее чистая будущая интеграция - выставлять PostgreSQL `application_name`
+на время Redmine-запроса.
 
-Desired value:
+Желаемый формат:
 
 ```text
 redmine rid=<request_id> uid=<user_id> src=<source>
 ```
 
-Then PostgreSQL log lines include:
+Тогда PostgreSQL log line будет содержать:
 
 ```text
 app=redmine rid=... uid=... src=api
 ```
 
-With this, pgBadger can show the application context from PostgreSQL logs, while
-the plugin journal can expand `request_id` into:
+В этом случае pgBadger сможет показывать application context из PostgreSQL-лога,
+а журнал плагина сможет раскрыть `request_id` в подробности:
 
 ```text
 login
@@ -225,21 +225,20 @@ source
 SQL events
 ```
 
-Implementation notes:
+Важные требования к реализации:
 
-- Set `application_name` at the start of a Redmine request.
-- Reset it at the end of the request.
-- Do not store long URLs in `application_name`.
-- Use only short, sanitized fields: `request_id`, `user_id`, `source`.
-- Be careful with DB connection pools: context must not leak to the next request.
+- выставлять `application_name` в начале Redmine-запроса;
+- сбрасывать значение в конце запроса;
+- не записывать длинный URL в `application_name`;
+- использовать только короткие очищенные поля: `request_id`, `user_id`, `source`;
+- учитывать connection pool, чтобы контекст одного запроса не протекал в следующий.
 
-This is intentionally not enabled by default in the current plugin version.
-The current plugin is safe and read-only from the perspective of PostgreSQL
-session settings.
+В текущей версии плагина это намеренно не включено по умолчанию. Текущий плагин
+безопасен с точки зрения PostgreSQL session settings и не меняет их.
 
-## 8. Active Query Inspection and Manual Cancel
+## 8. Просмотр активных запросов и ручная отмена
 
-PostgreSQL can show currently running queries:
+PostgreSQL может показать запросы, выполняющиеся прямо сейчас:
 
 ```sql
 SELECT
@@ -259,26 +258,26 @@ WHERE state <> 'idle'
 ORDER BY query_start;
 ```
 
-Soft cancel:
+Мягкая отмена SQL:
 
 ```sql
 SELECT pg_cancel_backend(<pid>);
 ```
 
-Hard terminate:
+Жесткое завершение backend-соединения:
 
 ```sql
 SELECT pg_terminate_backend(<pid>);
 ```
 
-Use `pg_cancel_backend` first. Use `pg_terminate_backend` only when cancellation
-does not work and the operational impact is acceptable.
+Сначала используйте `pg_cancel_backend`. `pg_terminate_backend` применяйте
+только если отмена не сработала и операционный риск приемлем.
 
-## 9. Suggested Operational Procedure
+## 9. Рекомендуемый порядок эксплуатации
 
-### Normal Mode
+### Обычный режим
 
-Redmine plugin:
+Плагин Redmine:
 
 ```text
 Slow SQL threshold = 60000
@@ -295,27 +294,27 @@ log_min_duration_statement = 60000
 pgBadger:
 
 ```text
-daily report or on-demand incident report
+ежедневный отчет или отчет по требованию во время инцидента
 ```
 
-### Incident Mode
+### Режим инцидента
 
-1. Check active DB queries with `pg_stat_activity`.
-2. If needed, cancel a query with `pg_cancel_backend(pid)`.
-3. Open Redmine slow query journal and filter by time/source/user.
-4. Generate pgBadger report for the incident window.
-5. Correlate Redmine user/path/source with PostgreSQL slow SQL.
+1. Проверить активные DB-запросы через `pg_stat_activity`.
+2. При необходимости отменить запрос через `pg_cancel_backend(pid)`.
+3. Открыть журнал Redmine и отфильтровать по времени/source/user.
+4. Сгенерировать pgBadger-отчет за окно инцидента.
+5. Сопоставить Redmine user/path/source с PostgreSQL slow SQL.
 
-### Short Smoke Test
+### Короткая smoke-проверка
 
-Temporarily use:
+Временно поставить:
 
 ```text
 Slow SQL threshold = 0
 Slow request threshold = 0
 ```
 
-Then open `/issues` in the portal and run an API request:
+Затем открыть `/issues` в портале и выполнить API-запрос:
 
 ```bash
 curl -i \
@@ -323,36 +322,35 @@ curl -i \
   "http://REDMINE_HOST/issues.json?set_filter=1&status_id=*&limit=100"
 ```
 
-Verify in the journal:
+Проверить в журнале:
 
 ```text
 source = portal
 source = api
-request_id links request and SQL events
+request_id связывает request и SQL-события
 ```
 
-Return thresholds to production values immediately after testing.
+После проверки сразу вернуть production-пороги.
 
-## 10. Limitations
+## 10. Ограничения
 
-Redmine plugin limitations:
+Ограничения Redmine-плагина:
 
-- Does not see SQL executed directly against PostgreSQL outside Redmine.
-- Background/rake jobs may not have HTTP IP, path, or request id.
-- API attribution depends on Redmine setting `User.current` correctly.
+- не видит SQL, выполненный напрямую в PostgreSQL вне Redmine;
+- background/rake-задачи могут не иметь HTTP IP, path и `request_id`;
+- API-атрибуция зависит от того, корректно ли Redmine устанавливает `User.current`.
 
-PostgreSQL / pgBadger limitations:
+Ограничения PostgreSQL / pgBadger:
 
-- Does not know the Redmine user by default.
-- Usually sees only the DB user, for example `redmine`.
-- Usually sees the Redmine server IP, not the browser/API client IP.
+- по умолчанию не знают пользователя Redmine;
+- обычно видят только пользователя БД, например `redmine`;
+- обычно видят IP сервера Redmine, а не IP браузера/API-клиента.
 
-Therefore the recommended setup is a combination:
+Поэтому рекомендованная схема - комбинация:
 
 ```text
-Redmine Slow Query Logger for attribution
-PostgreSQL slow log for database truth
-pgBadger for readable DB reports
-pg_stat_activity for live operational control
+Redmine Slow Query Logger для прикладной атрибуции
+PostgreSQL slow log для истины на уровне БД
+pgBadger для читаемых DB-отчетов
+pg_stat_activity для оперативного управления активными запросами
 ```
-

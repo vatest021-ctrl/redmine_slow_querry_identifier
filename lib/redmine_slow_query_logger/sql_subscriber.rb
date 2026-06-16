@@ -9,6 +9,8 @@ module RedmineSlowQueryLogger
     def install!
       return if @installed
 
+      # Подписка на все SQL ActiveRecord. В callback делаем только легкую проверку
+      # длительности, а в журнал пишем только события выше порога.
       ActiveSupport::Notifications.subscribe('sql.active_record') do |_name, started, finished, _id, payload|
         handle_sql(started, finished, payload)
       end
@@ -17,6 +19,7 @@ module RedmineSlowQueryLogger
     end
 
     def handle_sql(started, finished, payload)
+      # Защита от рекурсии: INSERT/SELECT самого журнала не должны логироваться.
       return if Store.writing?
       return if ignored_payload?(payload)
 
@@ -69,6 +72,8 @@ module RedmineSlowQueryLogger
     end
 
     def sanitize_sql(sql)
+      # SQL нормализуется перед сохранением, чтобы журнал оставался читаемым
+      # и не разрастался из-за многострочных запросов.
       normalized = Sanitizer.mask_sql(sql).gsub(/\s+/, ' ').strip
       max_length = Config.max_sql_length
       return [normalized, false] if normalized.length <= max_length

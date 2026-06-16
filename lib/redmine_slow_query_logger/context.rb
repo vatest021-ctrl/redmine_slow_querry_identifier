@@ -42,6 +42,8 @@ module RedmineSlowQueryLogger
       headers = payload[:headers]
       request = headers.respond_to?(:[]) ? headers['action_dispatch.request'] : nil
 
+      # Данные берем из payload и request object. Часть полей может отсутствовать
+      # у rake/background-сценариев, поэтому все значения заполняются мягко.
       context[:request_id] ||= request&.request_id || headers_value(headers, 'action_dispatch.request_id')
       context[:ip] ||= request&.remote_ip || headers_value(headers, 'action_dispatch.remote_ip')
       context[:method] ||= payload[:method] || request&.request_method

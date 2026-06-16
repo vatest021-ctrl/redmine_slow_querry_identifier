@@ -10,6 +10,8 @@ module RedmineSlowQueryLogger
     module_function
 
     def classify(path:, format: nil, controller: nil, login: nil)
+      # Классификация эвристическая: она нужна для быстрого расследования
+      # источника нагрузки, а не для строгого security-аудита.
       normalized_path = path.to_s.split('?', 2).first
       normalized_format = format.to_s.downcase
 
@@ -34,6 +36,8 @@ module RedmineSlowQueryLogger
       controller_name = controller.to_s
       return false if controller_name.blank?
 
+      # Все неизвестные контроллеры считаем endpoints плагинов. Список core
+      # контроллеров Redmine можно расширять при обновлении Redmine.
       core_controllers = %w[
         account activities admin attachments auth_sources boards calendars
         comments custom_fields documents enumerations files gantts groups

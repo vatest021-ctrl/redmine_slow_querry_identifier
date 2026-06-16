@@ -15,6 +15,8 @@ module RedmineSlowQueryLogger
     module_function
 
     def refresh!
+      # Настройки читаются один раз до установки SQL subscriber.
+      # Нельзя ходить в Setting внутри sql.active_record callback: это само вызывает SQL.
       @settings = load_settings
     end
 
@@ -75,6 +77,7 @@ module RedmineSlowQueryLogger
       return DEFAULTS.dup unless defined?(Setting)
       return DEFAULTS.dup if defined?(Store) && Store.writing?
 
+      # Значения из UI храним строками, чтобы поведение совпадало с ENV.
       DEFAULTS.merge(Setting.plugin_redmine_slow_query_logger.to_h.transform_values(&:to_s))
     rescue StandardError
       DEFAULTS.dup

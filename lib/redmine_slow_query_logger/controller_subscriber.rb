@@ -7,6 +7,8 @@ module RedmineSlowQueryLogger
     def install!
       return if @installed
 
+      # Используем Rails notifications вместо middleware: в Redmine/Rails 7
+      # middleware stack может быть уже заморожен во время загрузки плагинов.
       ActiveSupport::Notifications.subscribe('start_processing.action_controller') do |_name, _started, _finished, _id, payload|
         start_request(payload)
       end
@@ -19,6 +21,8 @@ module RedmineSlowQueryLogger
     end
 
     def start_request(payload)
+      # Контекст хранится в текущем потоке, чтобы SQL-события внутри этого
+      # web/API-запроса получили тот же request_id, пользователя, IP и source.
       Context.reset!
       Context.set_controller_payload(payload)
     rescue StandardError => e
@@ -29,6 +33,7 @@ module RedmineSlowQueryLogger
       Context.set_controller_payload(payload)
       duration_ms = (finished - started) * 1000.0
 
+      # Request-событие пишем только если весь HTTP-запрос превысил порог.
       return unless duration_ms >= Config.slow_request_ms || Config.log_all_requests?
 
       log_request(duration_ms, payload)
