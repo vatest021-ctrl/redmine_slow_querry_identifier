@@ -37,6 +37,17 @@ module RedmineSlowQueryLogger
       context[:path] = Sanitizer.mask_url(request.fullpath)
     end
 
+    def set_controller_payload(payload)
+      context = current
+      headers = payload[:headers]
+      request = headers.respond_to?(:[]) ? headers['action_dispatch.request'] : nil
+
+      context[:request_id] ||= request&.request_id || headers_value(headers, 'action_dispatch.request_id')
+      context[:ip] ||= request&.remote_ip || headers_value(headers, 'action_dispatch.remote_ip')
+      context[:method] ||= payload[:method] || request&.request_method
+      context[:path] ||= Sanitizer.mask_url(payload[:path] || request&.fullpath)
+    end
+
     def user_snapshot
       return anonymous_user unless defined?(User)
 
@@ -56,6 +67,14 @@ module RedmineSlowQueryLogger
         user_id: nil,
         login: 'anonymous'
       }
+    end
+
+    def headers_value(headers, key)
+      return nil unless headers.respond_to?(:[])
+
+      headers[key]
+    rescue StandardError
+      nil
     end
   end
 end

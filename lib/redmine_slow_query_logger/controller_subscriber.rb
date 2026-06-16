@@ -1,37 +1,48 @@
 # frozen_string_literal: true
 
 module RedmineSlowQueryLogger
-  class RequestMiddleware
-    def initialize(app)
-      @app = app
+  module ControllerSubscriber
+    module_function
+
+    def install!
+      return if @installed
+
+      ActiveSupport::Notifications.subscribe('start_processing.action_controller') do |_name, _started, _finished, _id, payload|
+        start_request(payload)
+      end
+
+      ActiveSupport::Notifications.subscribe('process_action.action_controller') do |_name, started, finished, _id, payload|
+        finish_request(started, finished, payload)
+      end
+
+      @installed = true
     end
 
-    def call(env)
+    def start_request(payload)
       Context.reset!
-      request = ActionDispatch::Request.new(env)
-      Context.set_request(request)
+      Context.set_controller_payload(payload)
+    rescue StandardError => e
+      Rails.logger.warn("[redmine_slow_query_logger] request context setup failed: #{e.class}: #{e.message}")
+    end
 
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      status, headers, response = @app.call(env)
-      duration_ms = elapsed_ms(started)
+    def finish_request(started, finished, payload)
+      Context.set_controller_payload(payload)
+      duration_ms = (finished - started) * 1000.0
 
-      log_request(duration_ms, status) if duration_ms >= Config.slow_request_ms || Config.log_all_requests?
+      return unless duration_ms >= Config.slow_request_ms || Config.log_all_requests?
 
-      [status, headers, response]
+      log_request(duration_ms, payload)
+    rescue StandardError => e
+      Rails.logger.warn("[redmine_slow_query_logger] request logging failed: #{e.class}: #{e.message}")
     ensure
       Context.clear!
     end
 
-    private
-
-    def elapsed_ms(started)
-      (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000.0
-    end
-
-    def log_request(duration_ms, status)
+    def log_request(duration_ms, payload)
       context = Context.current.merge(Context.user_snapshot)
       rounded_duration = duration_ms.round(1)
       sql_duration_ms = context.fetch(:sql_duration_ms, 0.0).round(1)
+      status = payload[:status]
 
       Rails.logger.warn(
         '[redmine_slow_query_logger] ' \
@@ -64,8 +75,6 @@ module RedmineSlowQueryLogger
         slow_sql_count: context.fetch(:slow_sql_count, 0),
         sql_duration_ms: sql_duration_ms
       )
-    rescue StandardError => e
-      Rails.logger.warn("[redmine_slow_query_logger] request logging failed: #{e.class}: #{e.message}")
     end
   end
 end

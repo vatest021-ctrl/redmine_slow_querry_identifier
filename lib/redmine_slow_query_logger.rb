@@ -5,10 +5,9 @@ require_relative 'redmine_slow_query_logger/context'
 require_relative 'redmine_slow_query_logger/sanitizer'
 require_relative 'redmine_slow_query_logger/store'
 require_relative 'redmine_slow_query_logger/sql_subscriber'
-require_relative 'redmine_slow_query_logger/request_middleware'
+require_relative 'redmine_slow_query_logger/controller_subscriber'
 
 Rails.application.config.after_initialize do
   RedmineSlowQueryLogger::SqlSubscriber.install!
+  RedmineSlowQueryLogger::ControllerSubscriber.install!
 end
-
-Rails.application.config.middleware.use RedmineSlowQueryLogger::RequestMiddleware
