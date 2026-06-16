@@ -133,3 +133,12 @@ By default, URL parameters with names like `password`, `token`, `key`, `secret`,
 `session`, or `cookie` are masked. SQL literals are not masked by default because
 keeping exact SQL is often useful during diagnosis; enable `Mask SQL literals`
 in plugin settings if SQL may contain sensitive values.
+
+## PostgreSQL and pgBadger
+
+For a full production workflow, combine this plugin with PostgreSQL
+`log_min_duration_statement`, `pg_stat_activity`, and pgBadger reports. See:
+
+```text
+docs/PG_BADGER_INTEGRATION.md
+```
